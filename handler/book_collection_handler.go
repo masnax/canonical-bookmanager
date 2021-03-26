@@ -30,19 +30,17 @@ func (ch *bookCollectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	defer ch.Unlock()
 	ch.Lock()
 
-	key, err := parser.URLParser(r.URL)
+	_, err := parser.URLParser(r.URL)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid path: '%s'", r.URL.Path))
 		return
 	}
 	switch r.Method {
-	case "PUT":
-		ch.put(w, r, key)
 	case "DELETE":
-		ch.delete(w, r, key)
+		ch.delete(w, r)
 	case "GET":
-		ch.get(w, r, key)
+		ch.get(w, r)
 	case "POST":
 		ch.post(w, r)
 	default:
@@ -51,34 +49,23 @@ func (ch *bookCollectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (ch *bookCollectionHandler) put(w http.ResponseWriter, r *http.Request, key string) {
-	if len(key) == 0 {
-		parser.ErrorResponse(w, http.StatusBadRequest,
-			fmt.Sprintf("Invalid path: %s", r.URL.Path))
-		return
-	}
+func (ch *bookCollectionHandler) delete(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
+	stmt, err := ch.db.Prepare("DELETE from book_collection WHERE book_id=? AND collection_id=?")
+	defer stmt.Close()
 	if err != nil {
-		parser.ErrorResponse(w, http.StatusBadRequest,
-			fmt.Sprintf("Malformed request body: %v", err))
+		parser.ErrorResponse(w, http.StatusInternalServerError,
+			fmt.Sprintf("Unable to update database: %v", err))
 		return
 	}
-	var bookCollection book_collection.BookCollection
-	err = json.Unmarshal(body, &collection)
+	var bookCollection collection.BookCollection
+	err = json.Unmarshal(body, &bookCollection)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Unexpected non-JSON request: %v", err))
 		return
 	}
-
-	stmt, err := ch.db.Prepare("UPDATE collection SET title=? WHERE id=?")
-	defer stmt.Close()
-	if err != nil {
-		parser.ErrorResponse(w, http.StatusInternalServerError,
-			fmt.Sprintf("Unable to update database: %v", err))
-		return
-	}
-	_, err = stmt.Exec(collection.Name, key)
+	_, err = stmt.Exec(bookCollection.BookID, bookCollection.CollectionID)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -86,28 +73,7 @@ func (ch *bookCollectionHandler) put(w http.ResponseWriter, r *http.Request, key
 	parser.JSONResponse(w, http.StatusOK, nil)
 }
 
-func (ch *bookCollectionHandler) delete(w http.ResponseWriter, r *http.Request, key string) {
-	if len(key) == 0 {
-		parser.ErrorResponse(w, http.StatusBadRequest,
-			fmt.Sprintf("Invalid path: %s", r.URL.Path))
-		return
-	}
-	stmt, err := ch.db.Prepare("DELETE from collection WHERE id=?")
-	defer stmt.Close()
-	if err != nil {
-		parser.ErrorResponse(w, http.StatusInternalServerError,
-			fmt.Sprintf("Unable to update database: %v", err))
-		return
-	}
-	_, err = stmt.Exec(key)
-	if err != nil {
-		parser.ErrorResponse(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	parser.JSONResponse(w, http.StatusOK, nil)
-}
-
-func (ch *bookCollectionHandler) get(w http.ResponseWriter, r *http.Request, key string) {
+func (ch *bookCollectionHandler) get(w http.ResponseWriter, r *http.Request) {
 	rows, err := ch.db.Query("SELECT * from book_collection")
 	defer rows.Close()
 	if err != nil {
@@ -118,7 +84,7 @@ func (ch *bookCollectionHandler) get(w http.ResponseWriter, r *http.Request, key
 	bookCollections := []collection.BookCollection{}
 	for rows.Next() {
 		var bookCollection collection.BookCollection
-		err := rows.Scan(&bookCollection.ID, &bookCollection.BookID, &bookCollection.CollectionID)
+		err := rows.Scan(&bookCollection.BookID, &bookCollection.CollectionID)
 		if err != nil {
 			parser.ErrorResponse(w, http.StatusInternalServerError,
 				fmt.Sprintf("Unable to scan results: %v", err))
