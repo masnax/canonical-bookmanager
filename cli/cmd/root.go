@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/masnax/rest-api/cli/cmd/add"
-	"github.com/masnax/rest-api/cli/cmd/delete"
-	"github.com/masnax/rest-api/cli/cmd/edit"
-	"github.com/masnax/rest-api/cli/cmd/list"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/add"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/delete"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/edit"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/list"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )

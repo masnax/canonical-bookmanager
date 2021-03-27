@@ -1,4 +1,4 @@
-module github.com/masnax/rest-api
+module github.com/masnax/canonical-bookmanager
 
 go 1.16
 

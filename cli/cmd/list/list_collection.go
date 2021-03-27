@@ -5,8 +5,8 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/masnax/rest-api/cli/cmd/rest"
-	"github.com/masnax/rest-api/collection"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/rest"
+	"github.com/masnax/canonical-bookmanager/collection"
 	"github.com/mitchellh/mapstructure"
 )
 

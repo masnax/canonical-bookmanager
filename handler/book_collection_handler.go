@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/masnax/rest-api/collection"
-	"github.com/masnax/rest-api/parser"
+	"github.com/masnax/canonical-bookmanager/collection"
+	"github.com/masnax/canonical-bookmanager/parser"
 )
 
 type bookCollectionHandler struct {

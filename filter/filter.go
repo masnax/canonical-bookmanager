@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/masnax/rest-api/book"
+	"github.com/masnax/canonical-bookmanager/book"
 )
 
 /*

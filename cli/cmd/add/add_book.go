@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/masnax/rest-api/book"
-	"github.com/masnax/rest-api/cli/cmd/rest"
+	"github.com/masnax/canonical-bookmanager/book"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/rest"
 )
 
 func AddBook(sourceUrl string, path string, args []string) {

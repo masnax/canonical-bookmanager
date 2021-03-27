@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/masnax/rest-api/db"
-	"github.com/masnax/rest-api/handler"
+	"github.com/masnax/canonical-bookmanager/db"
+	"github.com/masnax/canonical-bookmanager/handler"
 )
 
 func main() {

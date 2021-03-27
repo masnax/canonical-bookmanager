@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/masnax/rest-api/cli/cmd/rest"
-	"github.com/masnax/rest-api/collection"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/rest"
+	"github.com/masnax/canonical-bookmanager/collection"
 )
 
 func EditCollection(sourceUrl string, path string, argPath string, name string) {

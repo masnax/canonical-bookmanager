@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/masnax/rest-api/book"
-	"github.com/masnax/rest-api/cli/cmd/rest"
+	"github.com/masnax/canonical-bookmanager/book"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/rest"
 )
 
 func EditBook(sourceUrl string, path string, argPath string, title string,

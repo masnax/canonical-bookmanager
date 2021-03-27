@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/masnax/rest-api/book"
-	"github.com/masnax/rest-api/collection"
-	"github.com/masnax/rest-api/filter"
-	"github.com/masnax/rest-api/parser"
+	"github.com/masnax/canonical-bookmanager/book"
+	"github.com/masnax/canonical-bookmanager/collection"
+	"github.com/masnax/canonical-bookmanager/filter"
+	"github.com/masnax/canonical-bookmanager/parser"
 )
 
 type collectionHandler struct {

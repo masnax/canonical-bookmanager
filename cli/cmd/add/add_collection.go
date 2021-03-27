@@ -6,8 +6,8 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/masnax/rest-api/cli/cmd/rest"
-	"github.com/masnax/rest-api/collection"
+	"github.com/masnax/canonical-bookmanager/cli/cmd/rest"
+	"github.com/masnax/canonical-bookmanager/collection"
 )
 
 func AddNewCollection(sourceUrl string, path string, args []string) {
