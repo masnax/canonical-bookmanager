@@ -4,23 +4,24 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
-func URLParser(url *url.URL) (string, error) {
+func URLParser(url *url.URL) ([]string, error) {
 	parts := strings.Split(url.Path, "/")
-	if len(parts[len(parts)-1]) == 0 {
-		return "", nil
+	if len(parts) < 3 {
+		return nil, nil
 	}
-	if _, err := strconv.Atoi(parts[len(parts)-1]); err != nil {
-		return "", nil
-	}
-	return parts[len(parts)-1], nil
+	return parts, nil
 }
 
 func JSONResponse(w http.ResponseWriter, code int, data interface{}) error {
-	response, err := json.Marshal(data)
+	out := map[string]interface{}{
+		"status-code": code,
+		"status":      http.StatusText(code),
+		"data":        data,
+	}
+	response, err := json.Marshal(out)
 	if err != nil {
 		return err
 	}

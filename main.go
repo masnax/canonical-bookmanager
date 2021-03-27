@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+
 	db, err := db.GetDB()
 	if err != nil {
 		log.Fatal(err)

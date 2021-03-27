@@ -3,9 +3,12 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 	"sync"
 
 	"github.com/masnax/rest-api/book"
@@ -29,25 +32,49 @@ func NewBookHandler(db *sql.DB) *bookHandler {
 func (bh *bookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer bh.Unlock()
 	bh.Lock()
-	key, err := parser.URLParser(r.URL)
+
+	keys, err := parser.URLParser(r.URL)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid path: '%s'", r.URL.Path))
 		return
 	}
+	if err = bh.validateUrl(keys, r.URL); err != nil {
+		parser.ErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	lastKey := ""
+	if len(keys) > 0 {
+		lastKey = keys[len(keys)-1]
+	}
 	switch r.Method {
 	case "PUT":
-		bh.put(w, r, key)
+		bh.put(w, r, lastKey)
 	case "DELETE":
-		bh.delete(w, r, key)
+		bh.delete(w, r, lastKey)
 	case "GET":
-		bh.get(w, r, key)
+		bh.get(w, r, lastKey)
 	case "POST":
 		bh.post(w, r)
 	default:
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid method: '%s' for path: '%s'", r.Method, r.URL.Path))
 	}
+}
+
+func (bh *bookHandler) validateUrl(keys []string, url *url.URL) error {
+	if len(keys) > 3 {
+		return errors.New(fmt.Sprintf("Invalid path: '%s'", url.Path))
+	}
+	if len(keys) > 0 {
+		lastKey := keys[len(keys)-1]
+		if len(lastKey) > 0 {
+			if _, err := strconv.Atoi(lastKey); err != nil {
+				return errors.New(fmt.Sprintf("Invalid key: %s from path: %s", lastKey, url.Path))
+			}
+		}
+	}
+	return nil
 }
 
 func (bh *bookHandler) get(w http.ResponseWriter, r *http.Request, key string) {
@@ -125,6 +152,11 @@ func (bh *bookHandler) put(w http.ResponseWriter, r *http.Request, key string) {
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Unexpected non-JSON request: %v", err))
+		return
+	}
+
+	if book.Title == "" {
+		parser.ErrorResponse(w, http.StatusBadRequest, "Book must have title")
 		return
 	}
 
