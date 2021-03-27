@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func MakeRequest(url string, method string, body io.Reader) ([]interface{}, error) {
+func MakeRequest(url string, method string, body io.Reader) (interface{}, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("unable to form request: %v", err))
@@ -40,15 +40,8 @@ func MakeRequest(url string, method string, body io.Reader) ([]interface{}, erro
 
 	if in["status-code"].(float64) >= 400 {
 		return nil, errors.New(
-			fmt.Sprintf("got an error response from server - code: %v", in["status-code"]))
+			fmt.Sprintf("code: %v - got an error response from server - error: %v", in["status-code"], in["data"]))
 	}
 
-	if method == "GET" {
-		out, ok := in["data"].([]interface{})
-		if !ok {
-			return nil, errors.New(fmt.Sprintf("unable to parse response body"))
-		}
-		return out, nil
-	}
-	return nil, nil
+	return in["data"], nil
 }

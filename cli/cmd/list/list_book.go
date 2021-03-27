@@ -14,9 +14,12 @@ func GetBookList(sourceUrl string, path string, argPath string) ([]string, [][]s
 	url := sourceUrl + path + argPath
 	data := []book.Book{}
 	res, err := rest.MakeRequest(url, "GET", nil)
-	mapstructure.Decode(res, &data)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+	}
+	err = mapstructure.Decode(res, &data)
+	if err != nil {
+		log.Print(err)
 	}
 
 	out := [][]string{}

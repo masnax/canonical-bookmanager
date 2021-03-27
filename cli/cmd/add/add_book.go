@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/masnax/rest-api/book"
 	"github.com/masnax/rest-api/cli/cmd/rest"
@@ -14,7 +15,12 @@ func AddBook(sourceUrl string, path string, args []string) {
 	url := sourceUrl + path
 	edition, err := strconv.Atoi(args[3])
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("edition must be integer")
+		return
+	}
+	if _, err := time.Parse("2006-01-02", args[2]); err != nil {
+		log.Println("published date must be of form Y-M-D")
+		return
 	}
 	book := book.Book{
 		Title:          args[0],
@@ -27,12 +33,12 @@ func AddBook(sourceUrl string, path string, args []string) {
 
 	bodyBytes, err := json.Marshal(book)
 	if err != nil {
-		log.Printf("some error: %v", err)
+		log.Printf("parsing error: %v", err)
 	}
 	reader := bytes.NewReader(bodyBytes)
 
 	_, err = rest.MakeRequest(url, "POST", reader)
 	if err != nil {
-		log.Printf("some error: %v", err)
+		log.Printf("request error: %v", err)
 	}
 }

@@ -14,9 +14,12 @@ func GetCollectionStatList(sourceUrl string, path string, argPath string) ([]str
 	url := sourceUrl + path + argPath
 	data := []collection.BookCollection{}
 	res, err := rest.MakeRequest(url, "GET", nil)
-	mapstructure.Decode(res, &data)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("request error: %v", err)
+	}
+	err = mapstructure.Decode(res, &data)
+	if err != nil {
+		log.Printf("request error: %v", err)
 	}
 
 	out := [][]string{}

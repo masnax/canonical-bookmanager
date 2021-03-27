@@ -4,35 +4,37 @@ import (
 	"bytes"
 	"encoding/json"
 	"log"
-	"strconv"
+	"time"
 
 	"github.com/masnax/rest-api/book"
 	"github.com/masnax/rest-api/cli/cmd/rest"
 )
 
-func EditBook(sourceUrl string, path string, args []string) {
-	url := sourceUrl + path
-	edition, err := strconv.Atoi(args[3])
-	if err != nil {
-		log.Fatal(err)
+func EditBook(sourceUrl string, path string, argPath string, title string,
+	author string, date string, edition int, description string, genre string) {
+	url := sourceUrl + path + "/" + argPath
+
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		log.Println("published date must be of form Y-M-D")
+		return
 	}
 	book := book.Book{
-		Title:          args[0],
-		Author:         args[1],
-		Published_date: args[2],
+		Title:          title,
+		Author:         author,
+		Published_date: date,
 		Edition:        edition,
-		Description:    args[4],
-		Genre:          args[5],
+		Description:    description,
+		Genre:          genre,
 	}
 
 	bodyBytes, err := json.Marshal(book)
 	if err != nil {
-		log.Printf("some error: %v", err)
+		log.Printf("parsing error: %v", err)
 	}
 	reader := bytes.NewReader(bodyBytes)
 
-	_, err = rest.MakeRequest(url, "POST", reader)
+	_, err = rest.MakeRequest(url, "PUT", reader)
 	if err != nil {
-		log.Printf("some error: %v", err)
+		log.Printf("request error: %v", err)
 	}
 }

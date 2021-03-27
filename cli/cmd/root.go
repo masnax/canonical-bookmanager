@@ -13,8 +13,18 @@ import (
 
 const URL string = "http://localhost:8080/"
 
-var collectionFlag string
-var bookFlag string
+//flags
+var (
+	collectionFlag  string
+	bookFlag        string
+	titleFlag       string
+	authorFlag      string
+	dateFlag        string
+	editionFlag     int
+	descriptionFlag string
+	genreFlag       string
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "bmc",
 	Short: "bmc - book manager",
@@ -51,12 +61,13 @@ var cmdDelBook = &cobra.Command{
 	},
 }
 
-var cmdEditbook = &cobra.Command{
+var cmdEditBook = &cobra.Command{
 	Use:   "edit id",
 	Short: "Update book with id",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		edit.EditBook(URL, "books", args)
+		edit.EditBook(URL, "books", args[0], titleFlag, authorFlag, dateFlag,
+			editionFlag, descriptionFlag, genreFlag)
 	},
 }
 
@@ -113,11 +124,19 @@ func Execute() error {
 		"shows all books for a given collection name")
 	cmdListCollections.Flags().StringVar(&bookFlag, "bid", "",
 		"shows all collections for a given book id")
-	rootCmd.AddCommand(cmdListBooks)
 	rootCmd.AddCommand(cmdCollections)
+	cmdCollections.AddCommand(cmdListCollections)
+
+	rootCmd.AddCommand(cmdListBooks)
 	rootCmd.AddCommand(cmdAddBook)
 	rootCmd.AddCommand(cmdDelBook)
-	cmdCollections.AddCommand(cmdListCollections)
+	rootCmd.AddCommand(cmdEditBook)
+	cmdEditBook.Flags().StringVar(&titleFlag, "title", "", "book title")
+	cmdEditBook.Flags().StringVar(&authorFlag, "author", "", "book author")
+	cmdEditBook.Flags().StringVar(&dateFlag, "published", "", "book publish date")
+	cmdEditBook.Flags().IntVar(&editionFlag, "edition", 0, "book edition")
+	cmdEditBook.Flags().StringVar(&descriptionFlag, "description", "", "book description")
+	cmdEditBook.Flags().StringVar(&genreFlag, "genre", "", "book genre")
 
 	return rootCmd.Execute()
 }

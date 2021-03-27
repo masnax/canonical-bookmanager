@@ -155,11 +155,6 @@ func (bh *bookHandler) put(w http.ResponseWriter, r *http.Request, key string) {
 		return
 	}
 
-	if book.Title == "" {
-		parser.ErrorResponse(w, http.StatusBadRequest, "Book must have title")
-		return
-	}
-
 	stmt, err := bh.db.Prepare("UPDATE book SET " +
 		"title=?, author=?, published_date=?, edition=?, description=?, genre=? WHERE id=?")
 	defer stmt.Close()
