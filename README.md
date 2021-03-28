@@ -4,8 +4,9 @@ Simple REST API with CLI to manage books.
 
 # Resources
 
-- **net/http** for the API
-- **go-mysql-driver/mysql** for connecting to MySQL database
+- `net/http` for the API
+- `go-mysql-driver/mysql` for connecting to MySQL database
+- `mitchellh/mapstructure` for parsing responses in CLI
 - MySQL database running on a Docker container -- files included
 
 # Functionality
@@ -16,8 +17,11 @@ Simple REST API with CLI to manage books.
   - Collections have a **name, size, and creation date**
 
 # Database Structure
-
-- ## Table Books
+- There are three tables: `book`, `collection`, and `book_collection`.
+  - `book` holds information about all books 
+  - `collection` holds information pertaining to a collection
+  - `book_collection` associates books with collections
+- SQL files are present in the `docker-files` directory
 
 # CLI
 
@@ -74,7 +78,7 @@ go run cli/main.go collection drop        # drops a book from an existing collec
 ### `/books`
 #### GET
 -  returns list of all books
-Data:
+- Data:
 ```js
 [
    {
@@ -90,7 +94,7 @@ Data:
 ```
 #### POST
 - adds a new book to the list of all books
-Input:
+- Input:
 ```js
    {
       "id": 4,
@@ -106,7 +110,7 @@ Input:
 ### `/books/{id}`
 #### GET
 - returns a book with the given id
-Data:
+- Data:
 ```js
    {
       "id": 4,
@@ -121,7 +125,7 @@ Data:
 #### PUT
 - updates all book attributes for given id
 - input fields are not mandatory (book information could be unknown), except published date, for formatting
-Input:
+- Input:
 ```js
    {
       "title": "Title",
@@ -139,7 +143,7 @@ Input:
 ### `/collections`
 #### GET
 - gets list of all collections and their size
-Data:
+- Data:
 ```js
 [   
     {
@@ -151,7 +155,7 @@ Data:
 ```
 #### POST
 - adds a book to an existing collection
-Input:
+- Input:
 ```js
     {
       "book_id": 3,
@@ -169,7 +173,7 @@ Input:
 ### `/collections/manage/`
 #### POST
 - adds a new collection
-Input:
+- Input:
 ```js
     {
       "id": 2,
@@ -179,7 +183,7 @@ Input:
 ### `/collections/manage/{id}`
 #### GET
 - gets the collection with the given id
-Data:
+- Data:
 ```js
     {
       "id": 2,
@@ -188,7 +192,7 @@ Data:
 ```
 #### PUT
 - updates collection name for the given id
-Input:
+- Input:
 ```js
     {
       "collection": "Name"
@@ -200,7 +204,7 @@ Input:
 ### `/collections/book/{id}`
 #### GET
 - gets all collections that the book with the given id is part of
-Data:
+- Data:
 ```js
 [
     {
@@ -238,14 +242,13 @@ Data:
 }
 ```
 
-## Supported Status Codes
-
-Table goes here
-
 ## Filtering
 
-Necessary as per requirements
+- Filtering allows for filtering on a specific key for queries that return book results.
+  - These endpoints are `/books/`, `/books/{id}` and `/collections/collection/{name}`
+  - follows a format of `?filter=KEY+OP+VAL`
+    - `KEY` is any field of a book
+    - `OP`  is one of `[eq, ne, lt, gt, le, ne]`
+    - `VAL` is a series of `+` delimited words representing the value of the field `KEY`
+  - Example: `/books?filter=author+eq+max+asna`
 
-## Endpoints
-
-Guide
