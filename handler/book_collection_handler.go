@@ -44,11 +44,11 @@ func (ch *bookCollectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 	switch r.Method {
 	case "DELETE":
-		ch.delete(w, r)
+		ch.deleteBookFromCollection(w, r)
 	case "GET":
-		ch.get(w, r)
+		ch.getCollectionNameAndSize(w, r)
 	case "POST":
-		ch.post(w, r)
+		ch.addBookToCollection(w, r)
 	default:
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid method: '%s' for path: '%s'", r.Method, r.URL.Path))
@@ -68,7 +68,7 @@ func (ch *bookCollectionHandler) validateUrl(keys []string, url *url.URL) error 
 	return nil
 }
 
-func (ch *bookCollectionHandler) delete(w http.ResponseWriter, r *http.Request) {
+func (ch *bookCollectionHandler) deleteBookFromCollection(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	stmt, err := ch.db.Prepare("DELETE from book_collection WHERE book_id=? AND collection_id=?")
 	defer stmt.Close()
@@ -92,7 +92,7 @@ func (ch *bookCollectionHandler) delete(w http.ResponseWriter, r *http.Request) 
 	parser.JSONResponse(w, http.StatusOK, nil)
 }
 
-func (ch *bookCollectionHandler) get(w http.ResponseWriter, r *http.Request) {
+func (ch *bookCollectionHandler) getCollectionNameAndSize(w http.ResponseWriter, r *http.Request) {
 	q := `SELECT collection.id, collection.collection, count(book.id) as size from collection 
 LEFT JOIN (book, book_collection) on 
 		book.id = book_collection.book_id 
@@ -128,7 +128,7 @@ LEFT JOIN (book, book_collection) on
 	}
 }
 
-func (ch *bookCollectionHandler) post(w http.ResponseWriter, r *http.Request) {
+func (ch *bookCollectionHandler) addBookToCollection(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest,

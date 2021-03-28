@@ -53,13 +53,13 @@ func (ch *collectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	formKey := keys[len(keys)-2]
 	switch r.Method {
 	case "PUT":
-		ch.put(w, r, lastKey, formKey)
+		ch.updateCollectionNameForID(w, r, lastKey, formKey)
 	case "DELETE":
-		ch.delete(w, r, lastKey, formKey)
+		ch.deleteCollectionWithID(w, r, lastKey, formKey)
 	case "GET":
-		ch.get(w, r, lastKey, formKey)
+		ch.getCollectionInfo(w, r, lastKey, formKey)
 	case "POST":
-		ch.post(w, r)
+		ch.addNewCollection(w, r)
 	default:
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid method: '%s' for path: '%s'", r.Method, r.URL.Path))
@@ -86,7 +86,7 @@ func (ch *collectionHandler) validateUrl(keys []string, url *url.URL) error {
 	return nil
 }
 
-func (ch *collectionHandler) put(w http.ResponseWriter, r *http.Request, lastKey string, formKey string) {
+func (ch *collectionHandler) updateCollectionNameForID(w http.ResponseWriter, r *http.Request, lastKey string, formKey string) {
 	if len(lastKey) == 0 || formKey != "manage" {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid path: %s", r.URL.Path))
@@ -121,7 +121,7 @@ func (ch *collectionHandler) put(w http.ResponseWriter, r *http.Request, lastKey
 	parser.JSONResponse(w, http.StatusOK, nil)
 }
 
-func (ch *collectionHandler) delete(w http.ResponseWriter, r *http.Request, lastKey string, formKey string) {
+func (ch *collectionHandler) deleteCollectionWithID(w http.ResponseWriter, r *http.Request, lastKey string, formKey string) {
 	if len(lastKey) == 0 || formKey != "manage" {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid path: %s", r.URL.Path))
@@ -142,25 +142,14 @@ func (ch *collectionHandler) delete(w http.ResponseWriter, r *http.Request, last
 	parser.JSONResponse(w, http.StatusOK, nil)
 }
 
-func (ch *collectionHandler) get(w http.ResponseWriter, r *http.Request, lastKey string, formKey string) {
-	if formKey != "book" && formKey != "collection" && len(lastKey) == 0 {
-		parser.ErrorResponse(w, http.StatusBadRequest,
-			fmt.Sprintf("Invalid keys: %s, %s from path: %s", lastKey, formKey, r.URL.Path))
-		return
-	}
-
-	common := `bc.book_id = book.id 
+func (ch *collectionHandler) getBooksForCollectionName(w http.ResponseWriter, r *http.Request, lastKey string) {
+	q := `SELECT book.* from book 
+	JOIN (book_collection as bc, collection) ON 
+	bc.book_id = book.id 
 	AND 
-	collection.id = bc.collection_id
-	WHERE `
-	var q string
-	if formKey == "collection" {
-		q = `SELECT book.* from book 
-		JOIN (book_collection as bc, collection) ON ` + common + `collection.collection = "` + lastKey + `"`
-	} else {
-		q = `SELECT collection.* from collection 
-JOIN (book_collection as bc, book) ON ` + common + `book.id = ` + lastKey
-	}
+	collection.id = bc.collection_id 
+	WHERE 
+	collection.collection = "` + lastKey + `"`
 
 	rows, err := ch.db.Query(q)
 	defer rows.Close()
@@ -169,49 +158,78 @@ JOIN (book_collection as bc, book) ON ` + common + `book.id = ` + lastKey
 			fmt.Sprintf("Unable to query database due to error: %v", err))
 		return
 	}
+	books := []book.Book{}
+	for rows.Next() {
+		var book book.Book
+		err := rows.Scan(&book.Id, &book.Title,
+			&book.Author, &book.Published, &book.Edition, &book.Description, &book.Genre)
+		if err != nil {
+			parser.ErrorResponse(w, http.StatusInternalServerError,
+				fmt.Sprintf("Unable to scan results: %v", err))
+			return
+		}
+		form := r.FormValue("filter")
+		if len(form) > 0 {
+			keep, err := filter.FilterBooks(form, book)
+			if err != nil {
+				parser.ErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if !keep {
+				continue
+			}
+		}
+		books = append(books, book)
+	}
+	parser.JSONResponse(w, http.StatusOK, books)
+}
+
+func (ch *collectionHandler) getCollectionsForBookID(w http.ResponseWriter, r *http.Request, lastKey string) {
+	q := `SELECT collection.* from collection 
+	JOIN (book_collection as bc, book) ON 
+	bc.book_id = book.id 
+	AND 
+	collection.id = bc.collection_id 
+	WHERE 
+	book.id = ` + lastKey
+
+	rows, err := ch.db.Query(q)
+	defer rows.Close()
+	if err != nil {
+		parser.ErrorResponse(w, http.StatusInternalServerError,
+			fmt.Sprintf("Unable to query database due to error: %v", err))
+		return
+	}
+	collections := []collection.Collection{}
+	for rows.Next() {
+		var collection collection.Collection
+		err := rows.Scan(&collection.ID, &collection.Collection)
+		if err != nil {
+			parser.ErrorResponse(w, http.StatusInternalServerError,
+				fmt.Sprintf("Unable to scan results: %v", err))
+			return
+		}
+		collections = append(collections, collection)
+	}
+	parser.JSONResponse(w, http.StatusOK, collections)
+
+}
+
+func (ch *collectionHandler) getCollectionInfo(w http.ResponseWriter, r *http.Request, lastKey string, formKey string) {
+	if formKey != "book" && formKey != "collection" && len(lastKey) == 0 {
+		parser.ErrorResponse(w, http.StatusBadRequest,
+			fmt.Sprintf("Invalid keys: %s, %s from path: %s", lastKey, formKey, r.URL.Path))
+		return
+	}
 
 	if formKey == "collection" {
-		books := []book.Book{}
-		for rows.Next() {
-			var book book.Book
-			err := rows.Scan(&book.Id, &book.Title,
-				&book.Author, &book.Published, &book.Edition, &book.Description, &book.Genre)
-			if err != nil {
-				parser.ErrorResponse(w, http.StatusInternalServerError,
-					fmt.Sprintf("Unable to scan results: %v", err))
-				return
-			}
-			form := r.FormValue("filter")
-			if len(form) > 0 {
-				keep, err := filter.FilterBooks(form, book)
-				if err != nil {
-					parser.ErrorResponse(w, http.StatusBadRequest, err.Error())
-					return
-				}
-				if !keep {
-					continue
-				}
-			}
-			books = append(books, book)
-		}
-		parser.JSONResponse(w, http.StatusOK, books)
+		ch.getBooksForCollectionName(w, r, lastKey)
 	} else {
-		collections := []collection.Collection{}
-		for rows.Next() {
-			var collection collection.Collection
-			err := rows.Scan(&collection.ID, &collection.Collection)
-			if err != nil {
-				parser.ErrorResponse(w, http.StatusInternalServerError,
-					fmt.Sprintf("Unable to scan results: %v", err))
-				return
-			}
-			collections = append(collections, collection)
-		}
-		parser.JSONResponse(w, http.StatusOK, collections)
+		ch.getCollectionsForBookID(w, r, lastKey)
 	}
 }
 
-func (ch *collectionHandler) post(w http.ResponseWriter, r *http.Request) {
+func (ch *collectionHandler) addNewCollection(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest,

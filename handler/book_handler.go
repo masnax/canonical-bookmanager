@@ -50,13 +50,13 @@ func (bh *bookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case "PUT":
-		bh.put(w, r, lastKey)
+		bh.updateBookWithID(w, r, lastKey)
 	case "DELETE":
-		bh.delete(w, r, lastKey)
+		bh.deleteBookByID(w, r, lastKey)
 	case "GET":
-		bh.get(w, r, lastKey)
+		bh.listBooks(w, r, lastKey)
 	case "POST":
-		bh.post(w, r)
+		bh.addNewBook(w, r)
 	default:
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid method: '%s' for path: '%s'", r.Method, r.URL.Path))
@@ -78,7 +78,7 @@ func (bh *bookHandler) validateUrl(keys []string, url *url.URL) error {
 	return nil
 }
 
-func (bh *bookHandler) get(w http.ResponseWriter, r *http.Request, key string) {
+func (bh *bookHandler) listBooks(w http.ResponseWriter, r *http.Request, key string) {
 	q := "SELECT * from book"
 	if len(key) > 0 {
 		q += " WHERE id = " + key
@@ -117,7 +117,7 @@ func (bh *bookHandler) get(w http.ResponseWriter, r *http.Request, key string) {
 	parser.JSONResponse(w, http.StatusOK, books)
 }
 
-func (bh *bookHandler) post(w http.ResponseWriter, r *http.Request) {
+func (bh *bookHandler) addNewBook(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest,
@@ -148,7 +148,7 @@ func (bh *bookHandler) post(w http.ResponseWriter, r *http.Request) {
 	parser.JSONResponse(w, http.StatusOK, nil)
 }
 
-func (bh *bookHandler) put(w http.ResponseWriter, r *http.Request, key string) {
+func (bh *bookHandler) updateBookWithID(w http.ResponseWriter, r *http.Request, key string) {
 	if len(key) == 0 {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid path: %s", r.URL.Path))
@@ -184,7 +184,7 @@ func (bh *bookHandler) put(w http.ResponseWriter, r *http.Request, key string) {
 	parser.JSONResponse(w, http.StatusOK, nil)
 }
 
-func (bh *bookHandler) delete(w http.ResponseWriter, r *http.Request, key string) {
+func (bh *bookHandler) deleteBookByID(w http.ResponseWriter, r *http.Request, key string) {
 	if len(key) == 0 {
 		parser.ErrorResponse(w, http.StatusBadRequest,
 			fmt.Sprintf("Invalid path: %s", r.URL.Path))
