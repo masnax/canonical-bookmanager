@@ -7,12 +7,12 @@ import (
 	"strings"
 )
 
-func URLParser(url *url.URL) ([]string, error) {
+func URLParser(url *url.URL) []string {
 	parts := strings.Split(url.Path, "/")
 	if len(parts) < 3 {
-		return nil, nil
+		return nil
 	}
-	return parts, nil
+	return parts
 }
 
 func JSONResponse(w http.ResponseWriter, code int, data interface{}) error {

@@ -34,13 +34,8 @@ func (bh *bookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer bh.Unlock()
 	bh.Lock()
 
-	keys, err := parser.URLParser(r.URL)
-	if err != nil {
-		parser.ErrorResponse(w, http.StatusBadRequest,
-			fmt.Sprintf("Invalid path: '%s'", r.URL.Path))
-		return
-	}
-	if err = bh.validateUrl(keys, r.URL); err != nil {
+	keys := parser.URLParser(r.URL)
+	if err := bh.validateUrl(keys, r.URL); err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}

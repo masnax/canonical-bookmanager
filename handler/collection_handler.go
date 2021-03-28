@@ -39,13 +39,8 @@ func (ch *collectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer ch.Unlock()
 	ch.Lock()
 
-	keys, err := parser.URLParser(r.URL)
-	if err != nil {
-		parser.ErrorResponse(w, http.StatusBadRequest,
-			fmt.Sprintf("Invalid path: '%s'", r.URL.Path))
-		return
-	}
-	if err = ch.validateUrl(keys, r.URL); err != nil {
+	keys := parser.URLParser(r.URL)
+	if err := ch.validateUrl(keys, r.URL); err != nil {
 		parser.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
