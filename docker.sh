@@ -2,7 +2,7 @@
 
 docker run -d --rm \
   --name canonical \
-	--mount type=bind,src=$PWD/docker-scripts/,dst=/docker-entrypoint-initdb.d/ \
+	--mount type=bind,src=$PWD/docker-files/,dst=/docker-entrypoint-initdb.d/ \
 	-e  MYSQL_USER=sql \
   -e  MYSQL_PASSWORD=password \
 	-e  MYSQL_DATABASE=bookmanager \

@@ -23,6 +23,12 @@ Simple REST API with CLI to manage books.
   - `book_collection` associates books with collections
 - SQL files are present in the `docker-files` directory
 
+
+# Usage
+- from the main project directory: 
+  - `go run main.go` -- starts the server
+  - `go run cli/main.go [args]` -- use the CLI
+
 # CLI
 
 ## Books
