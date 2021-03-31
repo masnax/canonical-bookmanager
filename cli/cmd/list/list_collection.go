@@ -15,11 +15,13 @@ func GetCollectionStatList(sourceUrl string, path string, argPath string) ([]str
 	data := []collection.BookCollection{}
 	res, err := rest.MakeRequest(url, "GET", nil)
 	if err != nil {
-		log.Printf("request error: %v", err)
+		log.Print(err)
+		return nil, nil
 	}
 	err = mapstructure.Decode(res, &data)
 	if err != nil {
-		log.Printf("request error: %v", err)
+		log.Printf("unable to parse request with error: %v", err)
+		return nil, nil
 	}
 
 	out := [][]string{}
@@ -43,9 +45,14 @@ func GetCollectionList(sourceUrl string, path string, argPath string) ([]string,
 	url := sourceUrl + path + argPath
 	data := []collection.Collection{}
 	res, err := rest.MakeRequest(url, "GET", nil)
-	mapstructure.Decode(res, &data)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return nil, nil
+	}
+	err = mapstructure.Decode(res, &data)
+	if err != nil {
+		log.Printf("unable to parse request with error: %v", err)
+		return nil, nil
 	}
 
 	out := [][]string{}

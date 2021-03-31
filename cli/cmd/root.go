@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"log"
 	"os"
+	"strings"
 
 	"github.com/masnax/rest-api/cli/cmd/add"
 	"github.com/masnax/rest-api/cli/cmd/delete"
@@ -15,6 +17,7 @@ const URL string = "http://localhost:8080/"
 
 //flags
 var (
+	filterFlag      string
 	collectionFlag  string
 	bookFlag        string
 	titleFlag       string
@@ -37,8 +40,12 @@ var cmdListBooks = &cobra.Command{
 	Short:   "List books",
 	Run: func(cmd *cobra.Command, args []string) {
 		argPath := parseArgs(args)
-		header, data := list.GetBookList(URL, "books", argPath)
-		renderTable(header, data)
+		filter, ok := parseFilter(cmd, filterFlag)
+		if ok {
+			argPath += filter
+			header, data := list.GetBookList(URL, "books", argPath)
+			renderTable(header, data)
+		}
 	},
 }
 
@@ -89,7 +96,11 @@ var cmdListCollections = &cobra.Command{
 		var data [][]string
 		if len(collectionFlag) > 0 {
 			argPath += "/collection/" + collectionFlag
-			header, data = list.GetBookList(URL, "collections", argPath)
+			filter, ok := parseFilter(cmd, filterFlag)
+			if ok {
+				argPath += filter
+				header, data = list.GetBookList(URL, "collections", argPath)
+			}
 		} else if len(bookFlag) > 0 {
 			argPath += "/book/" + bookFlag
 			header, data = list.GetCollectionList(URL, "collections", argPath)
@@ -100,12 +111,72 @@ var cmdListCollections = &cobra.Command{
 	},
 }
 
+var cmdAddCollection = &cobra.Command{
+	Use:   "new name",
+	Short: "Add a new collection",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		add.AddNewCollection(URL, "collections/manage", args)
+	},
+}
+
+var cmdEditCollection = &cobra.Command{
+	Use:   "edit id name",
+	Short: "Update collection name",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		edit.EditCollection(URL, "collections/manage", args[0], args[1])
+	},
+}
+
+var cmdDelCollection = &cobra.Command{
+	Use:     "delete id",
+	Aliases: []string{"rm"},
+	Short:   "Delete collection with id",
+	Args:    cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		delete.DelBook(URL, "collections/manage", args)
+	},
+}
+
+var cmdAddToCollection = &cobra.Command{
+	Use:   "add book_id collection_id",
+	Short: "Add a book to a collection",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		add.AddToCollection(URL, "collections", args[0], args[1])
+	},
+}
+
+var cmdRemoveFromCollection = &cobra.Command{
+	Use:   "drop book_id collection_id",
+	Short: "Drop a book from a collection",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		delete.RemoveFromCollection(URL, "collections", args[0], args[1])
+	},
+}
+
 func parseArgs(args []string) string {
 	argPath := ""
 	for _, a := range args {
 		argPath += "/" + a
 	}
 	return argPath
+}
+
+func parseFilter(cmd *cobra.Command, filter string) (string, bool) {
+	if len(filter) == 0 {
+		return "", true
+	}
+	parts := strings.Split(filter, " ")
+	out := "?filter="
+	if len(parts) < 3 {
+		log.Println(cmd.Flag("filter").Usage)
+		return "", false
+	}
+	out += strings.ReplaceAll(filter, " ", "+")
+	return out, true
 }
 
 func renderTable(header []string, data [][]string) {
@@ -124,19 +195,30 @@ func Execute() error {
 		"shows all books for a given collection name")
 	cmdListCollections.Flags().StringVar(&bookFlag, "bid", "",
 		"shows all collections for a given book id")
-	rootCmd.AddCommand(cmdCollections)
-	cmdCollections.AddCommand(cmdListCollections)
-
-	rootCmd.AddCommand(cmdListBooks)
-	rootCmd.AddCommand(cmdAddBook)
-	rootCmd.AddCommand(cmdDelBook)
-	rootCmd.AddCommand(cmdEditBook)
 	cmdEditBook.Flags().StringVar(&titleFlag, "title", "", "book title")
 	cmdEditBook.Flags().StringVar(&authorFlag, "author", "", "book author")
 	cmdEditBook.Flags().StringVar(&dateFlag, "published", "", "book publish date")
 	cmdEditBook.Flags().IntVar(&editionFlag, "edition", 0, "book edition")
 	cmdEditBook.Flags().StringVar(&descriptionFlag, "description", "", "book description")
 	cmdEditBook.Flags().StringVar(&genreFlag, "genre", "", "book genre")
+
+	cmdListCollections.Flags().StringVarP(&filterFlag, "filter", "f", "",
+		"'--filter' format: \"key [eq,ne,lt,gt,le,ge] value\"")
+	cmdListBooks.Flags().StringVarP(&filterFlag, "filter", "f", "",
+		"'--filter' format: \"key [eq,ne,lt,gt,le,ge] value\"")
+
+	rootCmd.AddCommand(cmdCollections)
+	cmdCollections.AddCommand(cmdListCollections)
+	cmdCollections.AddCommand(cmdAddCollection)
+	cmdCollections.AddCommand(cmdEditCollection)
+	cmdCollections.AddCommand(cmdDelCollection)
+	cmdCollections.AddCommand(cmdRemoveFromCollection)
+	cmdCollections.AddCommand(cmdAddToCollection)
+
+	rootCmd.AddCommand(cmdListBooks)
+	rootCmd.AddCommand(cmdAddBook)
+	rootCmd.AddCommand(cmdDelBook)
+	rootCmd.AddCommand(cmdEditBook)
 
 	return rootCmd.Execute()
 }

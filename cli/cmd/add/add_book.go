@@ -23,12 +23,12 @@ func AddBook(sourceUrl string, path string, args []string) {
 		return
 	}
 	book := book.Book{
-		Title:          args[0],
-		Author:         args[1],
-		Published_date: args[2],
-		Edition:        edition,
-		Description:    args[4],
-		Genre:          args[5],
+		Title:       args[0],
+		Author:      args[1],
+		Published:   args[2],
+		Edition:     edition,
+		Description: args[4],
+		Genre:       args[5],
 	}
 
 	bodyBytes, err := json.Marshal(book)

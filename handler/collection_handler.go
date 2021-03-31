@@ -13,6 +13,7 @@ import (
 
 	"github.com/masnax/rest-api/book"
 	"github.com/masnax/rest-api/collection"
+	"github.com/masnax/rest-api/filter"
 	"github.com/masnax/rest-api/parser"
 )
 
@@ -105,7 +106,7 @@ func (ch *collectionHandler) put(w http.ResponseWriter, r *http.Request, lastKey
 		return
 	}
 
-	stmt, err := ch.db.Prepare("UPDATE collection SET title=? WHERE id=?")
+	stmt, err := ch.db.Prepare("UPDATE collection SET collection.collection=? WHERE collection.id=?")
 	defer stmt.Close()
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusInternalServerError,
@@ -155,7 +156,7 @@ func (ch *collectionHandler) get(w http.ResponseWriter, r *http.Request, lastKey
 	var q string
 	if formKey == "collection" {
 		q = `SELECT book.* from book 
-		JOIN (book_collection as bc, collection) ON ` + common + `collection.name = "` + lastKey + `"`
+		JOIN (book_collection as bc, collection) ON ` + common + `collection.collection = "` + lastKey + `"`
 	} else {
 		q = `SELECT collection.* from collection 
 JOIN (book_collection as bc, book) ON ` + common + `book.id = ` + lastKey
@@ -174,11 +175,22 @@ JOIN (book_collection as bc, book) ON ` + common + `book.id = ` + lastKey
 		for rows.Next() {
 			var book book.Book
 			err := rows.Scan(&book.Id, &book.Title,
-				&book.Author, &book.Published_date, &book.Edition, &book.Description, &book.Genre)
+				&book.Author, &book.Published, &book.Edition, &book.Description, &book.Genre)
 			if err != nil {
 				parser.ErrorResponse(w, http.StatusInternalServerError,
 					fmt.Sprintf("Unable to scan results: %v", err))
 				return
+			}
+			form := r.FormValue("filter")
+			if len(form) > 0 {
+				keep, err := filter.FilterBooks(form, book)
+				if err != nil {
+					parser.ErrorResponse(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				if !keep {
+					continue
+				}
 			}
 			books = append(books, book)
 		}
@@ -214,7 +226,7 @@ func (ch *collectionHandler) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stmt, err := ch.db.Prepare("INSERT INTO collection (name) VALUES (?)")
+	stmt, err := ch.db.Prepare("INSERT INTO collection (collection) VALUES (?)")
 	defer stmt.Close()
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusInternalServerError,

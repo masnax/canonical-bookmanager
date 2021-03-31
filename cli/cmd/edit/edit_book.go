@@ -19,12 +19,12 @@ func EditBook(sourceUrl string, path string, argPath string, title string,
 		return
 	}
 	book := book.Book{
-		Title:          title,
-		Author:         author,
-		Published_date: date,
-		Edition:        edition,
-		Description:    description,
-		Genre:          genre,
+		Title:       title,
+		Author:      author,
+		Published:   date,
+		Edition:     edition,
+		Description: description,
+		Genre:       genre,
 	}
 
 	bodyBytes, err := json.Marshal(book)

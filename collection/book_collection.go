@@ -6,6 +6,7 @@ type BookCollectionData struct {
 }
 
 type BookCollection struct {
+	ID         int    `json:"id"`
 	Collection string `json:"collection"`
 	Size       int    `json:"size"`
 }

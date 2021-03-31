@@ -93,7 +93,7 @@ func (ch *bookCollectionHandler) delete(w http.ResponseWriter, r *http.Request) 
 }
 
 func (ch *bookCollectionHandler) get(w http.ResponseWriter, r *http.Request) {
-	q := `SELECT collection.name, count(book.id) as size from collection 
+	q := `SELECT collection.id, collection.collection, count(book.id) as size from collection 
 LEFT JOIN (book, book_collection) on 
 		book.id = book_collection.book_id 
 		AND 
@@ -111,7 +111,7 @@ LEFT JOIN (book, book_collection) on
 	bookCollections := []collection.BookCollection{}
 	for rows.Next() {
 		var bc collection.BookCollection
-		err := rows.Scan(&bc.Collection, &bc.NumBooks)
+		err := rows.Scan(&bc.ID, &bc.Collection, &bc.Size)
 		if err != nil {
 			parser.ErrorResponse(w, http.StatusInternalServerError,
 				fmt.Sprintf("Unable to scan results: %v", err))
