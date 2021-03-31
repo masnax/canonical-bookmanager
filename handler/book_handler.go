@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/masnax/rest-api/book"
+	"github.com/masnax/rest-api/filter"
 	"github.com/masnax/rest-api/parser"
 )
 
@@ -93,14 +94,26 @@ func (bh *bookHandler) get(w http.ResponseWriter, r *http.Request, key string) {
 	for rows.Next() {
 		var book book.Book
 		err := rows.Scan(&book.Id, &book.Title,
-			&book.Author, &book.Published_date, &book.Edition, &book.Description, &book.Genre)
+			&book.Author, &book.Published, &book.Edition, &book.Description, &book.Genre)
 		if err != nil {
 			parser.ErrorResponse(w, http.StatusInternalServerError,
 				fmt.Sprintf("Unable to scan results: %v", err))
 			return
 		}
+		form := r.FormValue("filter")
+		if len(form) > 0 {
+			keep, err := filter.FilterBooks(form, book)
+			if err != nil {
+				parser.ErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if !keep {
+				continue
+			}
+		}
 		books = append(books, book)
 	}
+
 	parser.JSONResponse(w, http.StatusOK, books)
 }
 
@@ -120,14 +133,14 @@ func (bh *bookHandler) post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stmt, err := bh.db.Prepare("INSERT INTO book " +
-		"(title, author, published_date, edition, description, genre) VALUES (?, ?, ?, ?, ?, ?)")
+		"(title, author, published, edition, description, genre) VALUES (?, ?, ?, ?, ?, ?)")
 	defer stmt.Close()
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusInternalServerError,
 			fmt.Sprintf("Unable to update database: %v", err))
 		return
 	}
-	_, err = stmt.Exec(book.Title, book.Author, book.Published_date, book.Edition, book.Description, book.Genre)
+	_, err = stmt.Exec(book.Title, book.Author, book.Published, book.Edition, book.Description, book.Genre)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -156,14 +169,14 @@ func (bh *bookHandler) put(w http.ResponseWriter, r *http.Request, key string) {
 	}
 
 	stmt, err := bh.db.Prepare("UPDATE book SET " +
-		"title=?, author=?, published_date=?, edition=?, description=?, genre=? WHERE id=?")
+		"title=?, author=?, published=?, edition=?, description=?, genre=? WHERE id=?")
 	defer stmt.Close()
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusInternalServerError,
 			fmt.Sprintf("Unable to update database: %v", err))
 		return
 	}
-	_, err = stmt.Exec(book.Title, book.Author, book.Published_date, book.Edition, book.Description, book.Genre, key)
+	_, err = stmt.Exec(book.Title, book.Author, book.Published, book.Edition, book.Description, book.Genre, key)
 	if err != nil {
 		parser.ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
