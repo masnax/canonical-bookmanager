@@ -3,173 +3,131 @@ package filter
 import (
 	"errors"
 	"fmt"
-	"regexp"
+	"reflect"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/masnax/rest-api/book"
 )
 
 /*
-
-Specifier -- ID
-
-BOOK FILTERS {
-	Author -- String check
-  Genre  -- String check
-	Date   -- range of dates
-}
-
-BOOK LIMITERS {
-	Block any columns
-}
-
-COLLECTION FILTERS {
-	Author -- String check (return all collections that possess author)
-	Genre  -- String check (...)
-	Date   -- range (...)
-}
-
-COLLECTION LIMITERS {
-	block all books
-}
-
+filter structure: url/path?filter=KEY+OP+VALUE
+where KEY    is a field
+			OP     is an operator
+			VALUE  is a series of words delimited by '+' corresponding to an entry
 */
 
 type Filter struct {
-	Specifier string
-	Filters   string
-	Limiters  string
+	Key string
+	Op  string
+	Val string
 }
 
-/*
-filters are of the format: .../id#filter=...#limiter=...
-ex:
-localhost:8080/collections/4?filter=author+eq+firstname+lastname&edition+eq+1#limiter=title,genre
+var validOps = []string{"eq", "ne", "lt", "gt", "le", "ge"}
 
-this will return the titles and genres of all books from the collection with id 4,
-whose author is firstname lastname and is of edition number 1
-
-Filters and limiters do not have an order, but id must come first.
-
-
-id									-> []
-id?filter           -> [id, filter]
-id?filter#limiter   -> [id, filter, limiter]
-id#limiter          -> [id, limiter]
-id#limiter?filter   -> [id, limiter, filter]
-
-?filter             -> ["", filter]
-?filter#limiter     -> ["", filter, limiter]
-#limiter            -> ["", limiter]
-#limiter?filter     -> ["", limiter, filter]
-
-*/
-
-func GetFilters(path string) (*Filter, error) {
-	filter := &Filter{Limiters: "*"}
-	re := regexp.MustCompile(`(#|\?)`)
-	split := re.Split(path, -1)
-	// No filters/limiters, only id
-	if len(split) == 0 {
-		err := filter.addSpecifier(path)
-		if err != nil {
-			return nil, err
-		}
-		return filter, nil
-	}
-	// Maximum 3 fields supported
-	if len(split) > 3 {
-		return nil, errors.New(fmt.Sprintf("invalid filter syntax"))
-	}
-
-	err := filter.addSpecifier(split[0])
+func FilterBooks(form string, book book.Book) (bool, error) {
+	filter, err := parseFilter(form)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-
-	for _, p := range split[1:] {
-		err := filter.addColumnLimiters(p)
-		if err != nil {
-			return nil, err
-		}
-		err = filter.addColumnFilters(p)
-		if err != nil {
-			return nil, err
+	r := reflect.ValueOf(book)
+	for i := 0; i < r.NumField(); i++ {
+		field := r.Type().Field(i)
+		if strings.ToLower(field.Name) == strings.ToLower(filter.Key) {
+			switch field.Type.Kind() {
+			case reflect.Int:
+				return handleOpInt(r.Field(i), filter)
+			case reflect.String:
+				return handleOpString(field.Name, r.Field(i), filter)
+			default:
+				return false, errors.New(fmt.Sprintf("unexpected field for book: %s", field.Name))
+			}
 		}
 	}
-
-	return filter, nil
+	return true, nil
 }
 
-func (f *Filter) addSpecifier(path string) error {
-	if len(path) == 0 {
-		return nil
+func handleOpString(name string, value reflect.Value, filter Filter) (bool, error) {
+	valueStr := strings.ToLower(value.String())
+	if name == "Published" {
+		valueDate, err := time.Parse("2006-01-02", valueStr)
+		if err != nil {
+			return false, errors.New(fmt.Sprintf("invalid date for book, got %s", valueStr))
+		}
+		filterDate, err := time.Parse("2006-01-02", filter.Val)
+		if err != nil {
+			return false, errors.New(fmt.Sprintf("expected date of form Y-M-D, got %s", filter.Val))
+		}
+
+		switch filter.Op {
+		case "eq":
+			return !valueDate.Before(filterDate) && !valueDate.After(filterDate), nil
+		case "ne":
+			return valueDate.Before(filterDate) || valueDate.After(filterDate), nil
+		case "lt":
+			return valueDate.Before(filterDate), nil
+		case "gt":
+			return valueDate.After(filterDate), nil
+		case "le":
+			return !valueDate.After(filterDate), nil
+		case "ge":
+			return !valueDate.Before(filterDate), nil
+		}
+	} else {
+		filterVal := strings.ToLower(filter.Val)
+		switch filter.Op {
+		case "eq":
+			return valueStr == filterVal, nil
+		case "ne":
+			return valueStr != filterVal, nil
+		}
 	}
-	_, err := strconv.Atoi(path)
+	return false, errors.New("invalid filter")
+}
+
+func handleOpInt(value reflect.Value, filter Filter) (bool, error) {
+	filterVal, err := strconv.Atoi(filter.Val)
 	if err != nil {
-		return err
+		return false, errors.New("expected integer value in form")
 	}
-	f.Specifier = path
-	return nil
+	valueInt := value.Int()
+	switch filter.Op {
+	case "eq":
+		return valueInt == int64(filterVal), nil
+	case "ne":
+		return valueInt != int64(filterVal), nil
+	case "lt":
+		return valueInt < int64(filterVal), nil
+	case "gt":
+		return valueInt > int64(filterVal), nil
+	case "le":
+		return valueInt <= int64(filterVal), nil
+	case "ge":
+		return valueInt >= int64(filterVal), nil
+	}
+	return false, errors.New("invalid filter")
 }
 
-func (f *Filter) addColumnFilters(path string) error {
-	split := strings.Split(path, "filter=")
-	if len(split) < 2 {
-		return nil
+func parseFilter(form string) (Filter, error) {
+	filter := Filter{}
+	parts := strings.Split(form, " ")
+	if len(parts) < 3 {
+		return Filter{}, errors.New(fmt.Sprintf("invalid filter: %s", form))
 	}
-	if len(split) > 2 {
-		return errors.New("invalid filter syntax")
-	}
-	filters := strings.Split(split[1], "&")
-	for _, filter := range filters {
-		if len(filter) == 0 {
-			return errors.New("invalid filter syntax")
-		}
-
-	}
-	return nil
-}
-
-func (f *Filter) addColumnLimiters(path string) error {
-	split := strings.Split(path, "limiter=")
-	if len(split) < 2 {
-		return nil
-	}
-	if len(split) > 2 {
-		return errors.New("invalid limiter syntax")
-	}
-	limiters := strings.Split(split[1], ",")
-	for _, l := range limiters {
-		if !isWord(l) {
-			return errors.New("invalid limiter syntax")
-		}
-	}
-	f.Limiters = split[1]
-	return nil
-}
-
-func isWord(name string) bool {
-	if len(name) == 0 {
-		return false
-	}
-	for _, c := range name {
-		if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z')) || c != '_' {
-			return false
-		}
-	}
-	return true
-}
-
-func validateFilter(filter string) (string, error) {
-	//author+eq+firstname+lastname
-	//&edition+eq+1
-	split := strings.Split(filter, "+")
-
-	for _, s := range split {
-		if len(s) == 0 {
-			return "", errors.New("invalid filter syntax")
+	filter.Key = parts[0]
+	filter.Op = parts[1]
+	for i, p := range parts[2:] {
+		filter.Val += p
+		if (i + 2) != len(parts)-1 {
+			filter.Val += " "
 		}
 	}
 
-	return "", nil
+	for _, o := range validOps {
+		if filter.Op == o {
+			return filter, nil
+		}
+	}
+	return Filter{}, errors.New(fmt.Sprintf("invalid filter operator: %s", form))
 }
